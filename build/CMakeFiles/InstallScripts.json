@@ -1,0 +1,12 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/gabri/OneDrive/Documentos/FACULDADE/GB CG/build/cmake_install.cmake",
+		"C:/Users/gabri/OneDrive/Documentos/FACULDADE/GB CG/build/_deps/glfw-build/cmake_install.cmake",
+		"C:/Users/gabri/OneDrive/Documentos/FACULDADE/GB CG/build/_deps/glfw-build/src/cmake_install.cmake",
+		"C:/Users/gabri/OneDrive/Documentos/FACULDADE/GB CG/build/_deps/glfw-build/docs/cmake_install.cmake",
+		"C:/Users/gabri/OneDrive/Documentos/FACULDADE/GB CG/build/_deps/glm-build/cmake_install.cmake",
+		"C:/Users/gabri/OneDrive/Documentos/FACULDADE/GB CG/build/_deps/glm-build/glm/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
