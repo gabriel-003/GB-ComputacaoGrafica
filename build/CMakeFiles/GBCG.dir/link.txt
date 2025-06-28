@@ -1,0 +1,3 @@
+"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\GBCG.dir/objects.a
+C:\msys64\ucrt64\bin\ar.exe qc CMakeFiles\GBCG.dir/objects.a @CMakeFiles\GBCG.dir\objects1.rsp
+C:\msys64\ucrt64\bin\g++.exe -g -Wl,--whole-archive CMakeFiles\GBCG.dir/objects.a -Wl,--no-whole-archive -o GBCG.exe -Wl,--out-implib,libGBCG.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\GBCG.dir\linkLibs.rsp
