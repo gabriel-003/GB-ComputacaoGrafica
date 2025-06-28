@@ -11,9 +11,7 @@
 using namespace std;
 
 #include <glad/glad.h>
-
 #include <GLFW/glfw3.h>
-
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -23,13 +21,14 @@ using namespace std;
 
 using namespace glm;
 
+// Classe que representa câmera 3D com movimentação e controle de visão
 class Camera {
 public:
-    vec3 position;
+    vec3 position; // Posição da câmera no mundo
     vec3 front;
     vec3 up;
     vec3 right;
-    vec3 worldUp;
+    vec3 worldUp; // Vetor up do mundo
     
     float yaw;
     float pitch;
@@ -38,6 +37,7 @@ public:
     float mouseSensitivity;
     float fov;
     
+    // Construtor da câmera com valores padrão
     Camera(vec3 position = vec3(0.0f, 0.0f, 3.0f), vec3 up = vec3(0.0f, 1.0f, 0.0f), float yaw = -90.0f, float pitch = 0.0f) 
         : front(vec3(0.0f, 0.0f, -1.0f)), movementSpeed(2.5f), mouseSensitivity(0.1f), fov(45.0f) {
         this->position = position;
@@ -46,11 +46,11 @@ public:
         this->pitch = pitch;
         updateCameraVectors();
     }
-    
+    // Retorna a matriz de visualização 
     mat4 getViewMatrix() {
         return lookAt(position, position + front, up);
     }
-    
+    // Processa movimento do teclado (WASD)
     void processKeyboard(int direction, float deltaTime) {
         float velocity = movementSpeed * deltaTime;
         if (direction == GLFW_KEY_W)
@@ -62,7 +62,7 @@ public:
         if (direction == GLFW_KEY_D)
             position += right * velocity;
     }
-    
+    // Processa movimento do mouse para controlar a câmera
     void processMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true) {
         xoffset *= mouseSensitivity;
         yoffset *= mouseSensitivity;
@@ -79,7 +79,7 @@ public:
         
         updateCameraVectors();
     }
-    
+    // Processa scroll do mouse para zoom (alterar FOV)
     void processMouseScroll(float yoffset) {
         fov -= yoffset;
         if (fov < 1.0f)
@@ -89,6 +89,7 @@ public:
     }
 
 private:
+// Atualiza os vetores da câmera baseado nos ângulos yaw e pitch
     void updateCameraVectors() {
         vec3 newFront;
         newFront.x = cos(radians(yaw)) * cos(radians(pitch));
@@ -100,18 +101,51 @@ private:
         up = normalize(cross(right, front));
     }
 };
+// Classe que representa modelo 3D
+class Monkey {
+public:
+    vec3 position;
+    vec3 scaling; 
+    vec3 color;
+    float rotationAngle;
+    vec3 rotationAxis;
+    float speed;
+    // Construtor com valores padrão
+    Monkey(vec3 pos = vec3(0.0f), vec3 scl = vec3(1.0f), vec3 col = vec3(1.0f)) 
+        : position(pos), scaling(scl), color(col), rotationAngle(0.0f), rotationAxis(vec3(0.0f, 1.0f, 0.0f)), speed(1.0f) {}
+    // Atualiza o ângulo de rotação baseado no tempo
+    void update(float deltaTime) {
+        rotationAngle += speed * deltaTime;
+        if (rotationAngle > 360.0f) {
+            rotationAngle -= 360.0f;
+        }
+    }
+    // Retorna a matriz de modelo
+    mat4 getModelMatrix() {
+        mat4 model = mat4(1.0f);
+        model = translate(model, position);
+        model = rotate(model, radians(rotationAngle), rotationAxis);
+        model = glm::scale(model, scaling); // <- usa a função glm::scale corretamente
+        return model;
+    }
+};
 
+// Declaração das funções de callback para teclado, mouse, rolagem e redimensionamento da janela
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mode);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
+// Declarações de funções utilitárias
 int setupShader();
 GLuint loadTexture(string filePath);
 GLuint loadSuzanneModel(const string& objPath, int &nVertices);
-void drawModel(GLuint shaderID, GLuint VAO, vec3 position, vec3 dimensions, int nVertices, vec3 color = vec3(1.0, 0.0, 0.0));
+void drawModel(GLuint shaderID, GLuint VAO, mat4 model, int nVertices, vec3 color = vec3(1.0, 0.0, 0.0));
 
+// Dimensões da janela
 const GLuint WIDTH = 800, HEIGHT = 800;
+
+// Câmera e variáveis de controle de tempo e movimento do mouse
 Camera camera;
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
@@ -119,6 +153,7 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+// Estrutura para representar uma luz com posição, cor, intensidade e estado
 struct Light {
     vec3 position;
     vec3 color;
@@ -126,6 +161,7 @@ struct Light {
     bool enabled;
 };
 
+// Instâncias das luzes: key, fill e back light 
 Light keyLight;
 Light fillLight;
 Light backLight;
@@ -133,6 +169,7 @@ bool keyLightEnabled = true;
 bool fillLightEnabled = true;
 bool backLightEnabled = true;
 
+// Vertex Shader - processa cada vértice e passa variáveis para o Fragment Shader
 const GLchar *vertexShaderSource = R"(
 #version 400
 layout (location = 0) in vec3 position;
@@ -158,6 +195,7 @@ void main()
     gl_Position = projection * view * model * vec4(position, 1.0);
 })";
 
+// Fragment Shader - calcula iluminação e cor final do pixel
 const GLchar *fragmentShaderSource = R"(
 #version 400
 in vec3 FragPos;
@@ -236,8 +274,8 @@ void main()
     FragColor = vec4(result, 1.0);
 })";
 
+// Define posição, cor e intensidade das luzes baseadas na posição do objeto
 void setupLights(vec3 objectPosition, float objectScale) {
-    
     keyLight.position = objectPosition + vec3(2.0f, 2.0f, 2.0f) * objectScale;
     keyLight.color = vec3(1.0f, 1.0f, 1.0f);
     keyLight.intensity = 1.0f;
@@ -256,23 +294,27 @@ void setupLights(vec3 objectPosition, float objectScale) {
 
 int main()
 {
-    glfwInit();
+    glfwInit(); // Inicializa o janela GLFW
     GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "GB", nullptr, nullptr);
     glfwMakeContextCurrent(window);
     
+    // Define os callbacks para input e eventos
     glfwSetKeyCallback(window, key_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     
+    // Esconde cursor
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+    // Inicializa GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
 
+    // Print de informações da GPU e versão do OpenGL
     const GLubyte *renderer = glGetString(GL_RENDERER);
     const GLubyte *version = glGetString(GL_VERSION);
     cout << "Renderer: " << renderer << endl;
@@ -282,20 +324,34 @@ int main()
     glfwGetFramebufferSize(window, &width, &height);
     glViewport(0, 0, width, height);
 
+    // Carrega shaders, modelo e textura
     GLuint shaderID = setupShader();
     int nVertices;
     GLuint VAO = loadSuzanneModel("../assets/Modelos3D/Suzanne.obj", nVertices);
     GLuint textureID = loadTexture("../assets/Modelos3D/Suzanne.png");
 
+    // Parâmetros do material ka kd ks
     float ka = 0.1f;
     float kd = 0.7f;
     float ks = 0.5f;
     float shininess = 32.0f;
 
-    vec3 objectPosition = vec3(0.0f, 0.0f, 0.0f);
-    float objectScale = 1.0f;
-    setupLights(objectPosition, objectScale);
+    // Criação de dois macacos
+    Monkey monkey1(vec3(-1.5f, 0.0f, 0.0f), vec3(0.8f), vec3(1.0f, 0.5f, 0.5f));
+    Monkey monkey2(vec3(1.5f, 0.0f, 0.0f), vec3(0.8f), vec3(0.5f, 0.5f, 1.0f));
 
+    
+    // Define eixos e velocidade de rotação
+    monkey1.rotationAxis = vec3(0.0f, 1.0f, 0.0f);
+    monkey2.rotationAxis = vec3(1.0f, 0.0f, 0.0f);
+    
+    monkey1.speed = 45.0f;
+    monkey2.speed = 30.0f;
+
+    // Inicializa as luzes
+    setupLights(vec3(0.0f, 0.0f, 0.0f), 1.0f);
+
+    // Configura uniforms dos shaders
     glUseProgram(shaderID);
     glUniform1i(glGetUniformLocation(shaderID, "texture_diffuse1"), 0);
     glUniform1f(glGetUniformLocation(shaderID, "ka"), ka);
@@ -303,7 +359,7 @@ int main()
     glUniform1f(glGetUniformLocation(shaderID, "ks"), ks);
     glUniform1f(glGetUniformLocation(shaderID, "shininess"), shininess);
 
-
+    // Define parâmetros das luzes
     glUniform3f(glGetUniformLocation(shaderID, "keyLightPos"), keyLight.position.x, keyLight.position.y, keyLight.position.z);
     glUniform3f(glGetUniformLocation(shaderID, "keyLightColor"), keyLight.color.r, keyLight.color.g, keyLight.color.b);
     glUniform1f(glGetUniformLocation(shaderID, "keyLightIntensity"), keyLight.intensity);
@@ -316,17 +372,23 @@ int main()
     glUniform3f(glGetUniformLocation(shaderID, "backLightColor"), backLight.color.r, backLight.color.g, backLight.color.b);
     glUniform1f(glGetUniformLocation(shaderID, "backLightIntensity"), backLight.intensity);
         
-
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureID);
+    // Habilita z-buffer para profundidade
     glEnable(GL_DEPTH_TEST);
 
+    // Loop principal
     while (!glfwWindowShouldClose(window))
     {
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        // Atualiza rotação dos macacos
+        monkey1.update(deltaTime);
+        monkey2.update(deltaTime);
+        
+        // Controle da câmera com teclas WASD
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
             camera.processKeyboard(GLFW_KEY_W, deltaTime);
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -336,10 +398,33 @@ int main()
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
             camera.processKeyboard(GLFW_KEY_D, deltaTime);
         
+        // Controle de movimentação dos objetos com setas e IJKL
+        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+            monkey1.position.y += 1.0f * deltaTime;
+        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+            monkey1.position.y -= 1.0f * deltaTime;
+        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+            monkey1.position.x -= 1.0f * deltaTime;
+        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+            monkey1.position.x += 1.0f * deltaTime;
+            
+      
+        if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)
+            monkey2.position.y += 1.0f * deltaTime;
+        if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)
+            monkey2.position.y -= 1.0f * deltaTime;
+        if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS)
+            monkey2.position.x -= 1.0f * deltaTime;
+        if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+            monkey2.position.x += 1.0f * deltaTime;
+        
+        // Processa eventos
         glfwPollEvents();
+        // Limpa a tela
         glClearColor(0.08f, 0.08f, 0.08f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // Atualiza a matriz de projeção e visão
         mat4 projection = perspective(radians(camera.fov), (float)width / (float)height, 0.1f, 100.0f);
         glUniformMatrix4fv(glGetUniformLocation(shaderID, "projection"), 1, GL_FALSE, value_ptr(projection));
         
@@ -348,8 +433,10 @@ int main()
         
         glUniform3f(glGetUniformLocation(shaderID, "viewPos"), camera.position.x, camera.position.y, camera.position.z);
 
-        drawModel(shaderID, VAO, vec3(0.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 1.0f), nVertices, vec3(1.0f, 1.0f, 1.0f));
-
+        // Renderiza os dois macacos
+        drawModel(shaderID, VAO, monkey1.getModelMatrix(), nVertices, monkey1.color);
+        drawModel(shaderID, VAO, monkey2.getModelMatrix(), nVertices, monkey2.color);
+        // Atualiza estado das luzes
         glUniform1i(glGetUniformLocation(shaderID, "keyLightEnabled"), keyLightEnabled);
         glUniform1i(glGetUniformLocation(shaderID, "fillLightEnabled"), fillLightEnabled);
         glUniform1i(glGetUniformLocation(shaderID, "backLightEnabled"), backLightEnabled);
@@ -362,22 +449,26 @@ int main()
     return 0;
 }
 
+// Callback chamada quando uma tecla é pressionada
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mode)
 {
+    // Fecha a janela com ESC
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
 
-    
     if (action == GLFW_PRESS) {
         switch (key) {
+            // Alterna key light
             case GLFW_KEY_1:
                 keyLightEnabled = !keyLightEnabled;
                 cout << "Key light " << (keyLightEnabled ? "enabled" : "disabled") << endl;
                 break;
+            // Alterna fill light
             case GLFW_KEY_2:
                 fillLightEnabled = !fillLightEnabled;
                 cout << "Fill light " << (fillLightEnabled ? "enabled" : "disabled") << endl;
                 break;
+            // Alterna back light
             case GLFW_KEY_3:
                 backLightEnabled = !backLightEnabled;
                 cout << "Back light " << (backLightEnabled ? "enabled" : "disabled") << endl;
@@ -386,9 +477,11 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 }
 
+// Callback para movimento do mouse
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
     if (firstMouse) {
+        // Evita pulo no primeiro movimento
         lastX = xpos;
         lastY = ypos;
         firstMouse = false;
@@ -403,18 +496,22 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     camera.processMouseMovement(xoffset, yoffset);
 }
 
+// Callback para scroll, zoom
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     camera.processMouseScroll(yoffset);
 }
 
+// Callback chamada ao redimensionar a janela
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
 
+// Compila e configura os shaders
 int setupShader()
 {
+    // Compilação do vertex shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
     glCompileShader(vertexShader);
@@ -428,6 +525,7 @@ int setupShader()
         std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
 
+    // Compilação do fragment shader  
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
     glCompileShader(fragmentShader);
@@ -457,6 +555,7 @@ int setupShader()
     return shaderProgram;
 }
 
+// Carrega textura a partir de arquivo
 GLuint loadTexture(string filePath)
 {
     GLuint textureID;
@@ -492,12 +591,14 @@ GLuint loadTexture(string filePath)
     return textureID;
 }
 
+// Estrutura que representa vértice
 struct Vertex {
     vec3 position;
     vec3 normal;
     vec2 texCoord;
 };
 
+// Carrega modelo .OBJ e retorna VAO
 GLuint loadSuzanneModel(const string& objPath, int &nVertices) {
     vector<vec3> temp_positions;
     vector<vec3> temp_normals;
@@ -587,12 +688,9 @@ GLuint loadSuzanneModel(const string& objPath, int &nVertices) {
     return VAO;
 }
 
-void drawModel(GLuint shaderID, GLuint VAO, vec3 position, vec3 dimensions, int nVertices, vec3 color)
+// Desenha o modelo usando o VAO e a matriz de modelo
+void drawModel(GLuint shaderID, GLuint VAO, mat4 model, int nVertices, vec3 color)
 {
-    mat4 model = mat4(1.0f);
-    model = translate(model, position);
-    model = scale(model, dimensions);
-    
     glUniformMatrix4fv(glGetUniformLocation(shaderID, "model"), 1, GL_FALSE, value_ptr(model));
     glUniform3f(glGetUniformLocation(shaderID, "vColor"), color.r, color.g, color.b);
     
